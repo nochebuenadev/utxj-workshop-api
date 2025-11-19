@@ -14,6 +14,11 @@ type Student struct {
 	Workshop string `json:"workshop"`
 }
 
+type Statistics struct {
+	Workshops map[string]int `json:"workshops"`
+	Version   string         `json:"version"`
+}
+
 var (
 	students     = make(map[int]Student)
 	nextID       = 1
@@ -31,11 +36,29 @@ func main() {
 	// Routes
 	e.GET("/api/students", listStudents)
 	e.POST("/api/students", registerStudent)
+	e.GET("/stats", getStats)
 	e.GET("/health", healthCheck)
 
 	initializeStudents()
 
 	e.Logger.Fatal(e.Start(":8080"))
+}
+
+func getStats(c echo.Context) error {
+	studentsLock.RLock()
+	defer studentsLock.RUnlock()
+
+	workshops := make(map[string]int)
+	for _, alumno := range students {
+		workshops[alumno.Workshop]++
+	}
+
+	stats := Statistics{
+		Workshops: workshops,
+		Version:   "2.0",
+	}
+
+	return c.JSON(http.StatusOK, stats)
 }
 
 func listStudents(c echo.Context) error {
@@ -51,23 +74,27 @@ func listStudents(c echo.Context) error {
 }
 
 func registerStudent(c echo.Context) error {
-	var Student Student
-	if err := c.Bind(&Student); err != nil {
+	var student Student
+	if err := c.Bind(&student); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid data"})
 	}
 
-	if Student.Name == "" {
+	if student.Name == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Name is required"})
+	}
+
+	if student.Workshop == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Workshop is required"})
 	}
 
 	studentsLock.Lock()
 	defer studentsLock.Unlock()
 
-	Student.ID = nextID
-	students[nextID] = Student
+	student.ID = nextID
+	students[nextID] = student
 	nextID++
 
-	return c.JSON(http.StatusCreated, Student)
+	return c.JSON(http.StatusCreated, student)
 }
 
 func healthCheck(c echo.Context) error {
