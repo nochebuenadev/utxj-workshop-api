@@ -111,4 +111,5 @@ func initializeStudents() {
 	students[1] = Student{ID: 1, Name: "Ana García", Workshop: "GitOps"}
 	students[2] = Student{ID: 2, Name: "Carlos López", Workshop: "GitOps"}
 	nextID = 3
+	//hola
 }
